@@ -1,4 +1,4 @@
-#!/usr/bin/python
+#!/usr/bin/env python3
 
 """Convert a keypunch card image into SVG.
 
@@ -94,9 +94,9 @@ PUNCH_RECT = """<rect
 def DoCard(f):
   preamble = Template(SVG_PREAMBLE)
   punch = Template(PUNCH_RECT)
-  print preamble.substitute(width_px=CARD_WIDTH_PX, height_px=CARD_HEIGHT_PX)
-  print """<g inkscape:label="layer1" inkscape:groupmode="layer"
-              id="layer1">"""
+  print(preamble.substitute(width_px=CARD_WIDTH_PX, height_px=CARD_HEIGHT_PX))
+  print("""<g inkscape:label="layer1" inkscape:groupmode="layer"
+              id="layer1">""")
 
   row = 0
   for line in f:
@@ -105,11 +105,11 @@ def DoCard(f):
         id = 'rect%02d%02d' % (row, col)
         x = col * CELL_WIDTH + LEFT_MARGIN_PX
         y = row * CELL_HEIGHT + TOP_MARGIN_PX
-        print punch.substitute(id=id, x=x, y=y,
-                               width=PUNCH_WIDTH, height=PUNCH_HEIGHT)
+        print(punch.substitute(id=id, x=x, y=y,
+                               width=PUNCH_WIDTH, height=PUNCH_HEIGHT))
     row += 1
-  print '</g>'
-  print '</svg>'
+  print('</g>')
+  print('</svg>')
 
 
 DoCard(sys.stdin)

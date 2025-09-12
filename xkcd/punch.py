@@ -1,4 +1,4 @@
-#!/usr/bin/python
+#!/usr/bin/env python3
 
 """Encode text in punch card form.
 
@@ -62,7 +62,7 @@ text = ' '.join(sys.argv[1:])
 x = punches(text)
 i = 0
 for row in x:
-  print row
-  # print '%2d %s' % (i-2, row)
+  print(row)
+  # print('%2d %s' % (i-2, row))
   i = i + 1
 

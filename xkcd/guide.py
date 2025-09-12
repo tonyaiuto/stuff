@@ -24,8 +24,8 @@ for c in range(1,81):
   l += str(c % 10)
   if c % 10 == 0:
     l += ' '
-print l
-print
+print(l)
+print()
 
 
 row = 0
@@ -37,4 +37,4 @@ for line in sys.stdin:
   for c in range(8):
     out += l[(c * 10):(c * 10 + 10)]
     out += ' '
-  print out
+  print(out)
