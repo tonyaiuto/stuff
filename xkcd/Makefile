@@ -1,4 +1,13 @@
 
+
+unmask:
+	@python3 unmask.py key.txt puzzle1.txt
+	@python3 unmask.py key.txt puzzle2.txt
+	@python3 unmask.py key.txt puzzle3.txt
+
+x:
+	python3 gen_convert.py
+
 # Tool to tell me the punches
 punch_guide:
 	python3 guide.py <google.txt
