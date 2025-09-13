@@ -19,7 +19,7 @@ key = """
 
 punched2char = {}
 rows = key.split('\n')[2:]
-print(rows)
+# print(rows)
 for col in range(5, len(rows[0])):
    punchval = 0
    for row in range(1, 13):
@@ -27,4 +27,4 @@ for col in range(5, len(rows[0])):
    # print(rows[0][col], punchval) 
    punched2char[punchval] = rows[0][col]
 
-print('punched2char = ', punched2char)
+# print('punched2char = ', punched2char)
