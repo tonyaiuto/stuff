@@ -3,10 +3,8 @@
 unmask:
 	@python3 unmask.py puzzle3.txt puzzle1.txt
 	@python3 unmask.py puzzle3.txt puzzle2.txt
-	@python3 unmask.py puzzle3.txt key.txt
+	@python3 unmask.py puzzle3.txt puzzle4.txt
 
-x:
-	python3 gen_convert.py
 
 # Tool to tell me the punches
 punch_guide:
