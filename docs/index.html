@@ -1,0 +1,86 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<title>Time &amp; Tide Clock — Test Harness</title>
+<style>
+  body {
+    font-family: system-ui, sans-serif;
+    max-width: 900px;
+    margin: 2rem auto;
+    padding: 0 1rem;
+    color: #1a1a1a;
+    background: #fff;
+  }
+  h1 { font-size: 1.3rem; }
+  .harness-note {
+    font-size: 0.75rem;
+    color: #555;
+    background: #f5f5f5;
+    border: 1px solid #ddd;
+    border-radius: 6px;
+    padding: 0.75rem 1rem;
+    margin-bottom: 1.5rem;
+  }
+  .panels {
+    display: flex;
+    gap: 1.5rem;
+    flex-wrap: wrap;
+  }
+  .tideclock {
+    flex: 1 1 320px;
+    border: 1px solid #ccc;
+    border-radius: 8px;
+    padding: 1rem 1.25rem;
+    background: #fafafa;
+  }
+  .tideclock-title { margin: 0 0 0.5rem; }
+  .tideclock-status { color: #a00; font-size: 0.75rem; min-height: 1.2em; margin-bottom: 0.5rem; }
+  .tideclock-date-row { margin-bottom: 0.75rem; display: flex; align-items: center; gap: 0.75rem; }
+  .tideclock-row { display: flex; justify-content: space-between; padding: 0.15rem 0; }
+  .tideclock-row-label { color: #555; }
+  .tideclock-row-value { font-weight: 500; }
+
+  .tideclock-analog-view { margin-bottom: 0.5rem; }
+  .tideclock-analog-svg { display: block; width: 100%; max-width: 400px; height: auto; margin: 0 auto; }
+  .tideclock-face { fill: #f3f3f3; }
+  .tideclock-wedge { fill: #8a8a8a; }
+  .tideclock-rim { fill: none; stroke: #333; stroke-width: 2; }
+  .tideclock-tick { stroke: #333; stroke-width: 1.5; }
+  .tideclock-numeral { fill: #333; font-size: 13px; font-family: inherit; }
+  .tideclock-hand { stroke: #1a1a1a; stroke-linecap: round; }
+  .tideclock-hand-hour { stroke-width: 5; }
+  .tideclock-hand-minute { stroke-width: 3; }
+  .tideclock-hub { fill: #1a1a1a; }
+
+  .tideclock-sunmoon-icon { font-size: 17px; }
+  .tideclock-sunmoon-label { font-size: 10px; fill: #555; font-family: inherit; }
+
+  .tideclock-tide-hand { stroke-linecap: round; opacity: 0.85; }
+  .tideclock-tide-hand-high { stroke: #1b4f8a; stroke-width: 6; }
+  .tideclock-tide-hand-low { stroke: #7fb2e5; stroke-width: 2; }
+</style>
+</head>
+<body>
+  <h1>Time &amp; Tide Clock — Test Harness</h1>
+  <p class="harness-note">
+    Must be served over http(s) (not opened as a <code>file://</code> URL) since it fetches
+    <code>settings.example.json</code> and the NOAA tide API — e.g. run
+    <code>python3 -m http.server</code> from this directory and open
+    <code>http://localhost:8000/</code>.
+    <br>
+    Two independent panels below (each its own <code>TideClock</code> instance, own date
+    picker) to demonstrate showing multiple days on one page (v1a).
+  </p>
+
+  <div class="panels">
+    <div id="clock-a"></div>
+  </div>
+
+  <script src="clock.js"></script>
+  <script>
+    const clockA = new TideClock({ configUrl: 'nsyc_tideclock.json', container: 'clock-a' });
+    clockA.init();
+  </script>
+</body>
+</html>
