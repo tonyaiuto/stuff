@@ -3,9 +3,12 @@
  * and high/low tide predictions for a configured (or browser-detected) location.
  *
  * Usage:
- *   const clock = new TideClock({ configUrl: 'settings.json', container: 'clock' });
+ *   const clock = new TideClock({ configUrl: 'settings.json', container: 'clock', hourFormat: 12 });
  *   await clock.init();
  *   clock.setDate('2026-07-04'); // recompute sun/tide sections for another date
+ *
+ * hourFormat is 12 or 24 (defaults to 12) and controls how times are displayed
+ * everywhere — the flat data table, and the compact labels on the analog face.
  *
  * Settings JSON shape:
  *   {
@@ -103,18 +106,23 @@
     }).format(date);
   }
 
-  function formatClockTime(date, timeZone) {
+  /** hourFormat is 12 or 24; 12-hour output includes AM/PM, 24-hour never does. */
+  function formatClockTime(date, timeZone, hourFormat) {
     return new Intl.DateTimeFormat('en-US', {
       timeZone,
       hour: 'numeric',
       minute: '2-digit',
+      hour12: hourFormat !== 24,
     }).format(date);
   }
 
-  /** Compact "5:45a" style label used on the analog face, where space is tight. */
-  function formatCompactHM(hour24, minute) {
-    const h12 = hour24 % 12 === 0 ? 12 : hour24 % 12;
+  /** Compact face label, where space is tight: "5:45a"/"5:45p" (12h) or "17:45" (24h). */
+  function formatCompactHM(hour24, minute, hourFormat) {
     const mm = String(minute).padStart(2, '0');
+    if (hourFormat === 24) {
+      return `${String(hour24).padStart(2, '0')}:${mm}`;
+    }
+    const h12 = hour24 % 12 === 0 ? 12 : hour24 % 12;
     const suffix = hour24 < 12 ? 'a' : 'p';
     return `${h12}:${mm}${suffix}`;
   }
@@ -123,6 +131,18 @@
   function fractionFromTimeStr(hhmm) {
     const [h, m] = hhmm.split(':').map(Number);
     return fraction12(h, m);
+  }
+
+  /** "16:33" -> "4:33 PM" (12h) or "16:33" (24h), matching the sunrise/sunset style. */
+  function formatTideTimeStr(hhmm, hourFormat) {
+    const [h, m] = hhmm.split(':').map(Number);
+    const mm = String(m).padStart(2, '0');
+    if (hourFormat === 24) {
+      return `${String(h).padStart(2, '0')}:${mm}`;
+    }
+    const h12 = h % 12 === 0 ? 12 : h % 12;
+    const suffix = h < 12 ? 'AM' : 'PM';
+    return `${h12}:${mm} ${suffix}`;
   }
 
   // ---- Analog clock geometry helpers ----
@@ -392,10 +412,11 @@
   // ---- TideClock widget ----
 
   class TideClock {
-    constructor({ configUrl, container }) {
+    constructor({ configUrl, container, hourFormat }) {
       this.configUrl = configUrl;
       this.container = typeof container === 'string' ? document.getElementById(container) : container;
       if (!this.container) throw new Error('TideClock: container element not found');
+      this.hourFormat = hourFormat === 24 ? 24 : 12;
       this.config = null;
       this.selectedDate = null;
       this._clockTimer = null;
@@ -460,38 +481,41 @@
       try {
         const times = getSunTimes(refInstant, lat, lon);
         this._sunTimes = times;
-        this.sunEl.appendChild(rowEl('Sunrise', formatClockTime(times.sunrise, this.config.timeZone)));
-        this.sunEl.appendChild(rowEl('Sunset', formatClockTime(times.sunset, this.config.timeZone)));
+        this.sunEl.appendChild(rowEl('Sunrise', formatClockTime(times.sunrise, this.config.timeZone, this.hourFormat)));
+        this.sunEl.appendChild(rowEl('Sunset', formatClockTime(times.sunset, this.config.timeZone, this.hourFormat)));
       } catch (err) {
         this._sunTimes = null;
-        this.sunEl.textContent = 'Sun times unavailable: ' + err.message;
+        this.sunEl.appendChild(messageRowEl('Sun times unavailable: ' + err.message));
       }
       this._renderAnalog();
     }
 
     async _renderTides() {
       if (!this.config.tideStationId) {
-        this.tideEl.textContent = 'No tide station available for this location.';
+        this.tideEl.innerHTML = '';
+        this.tideEl.appendChild(messageRowEl('No tide station available for this location.'));
         this._renderTideMarkers([]);
         return;
       }
-      this.tideEl.textContent = 'Loading tide predictions…';
+      this.tideEl.innerHTML = '';
+      this.tideEl.appendChild(messageRowEl('Loading tide predictions…'));
       try {
         const events = await fetchTidePredictions(this.selectedDate, this.config.tideStationId);
         this.tideEl.innerHTML = '';
         if (!events.length) {
-          this.tideEl.textContent = 'No tide predictions returned for this date.';
+          this.tideEl.appendChild(messageRowEl('No tide predictions returned for this date.'));
           this._renderTideMarkers([]);
           return;
         }
         events.forEach((e) => {
           const label = (e.type === 'H' ? 'High' : 'Low') + ' tide';
-          const detail = e.time + ' (' + e.heightFt.toFixed(2) + ' ft)';
+          const detail = formatTideTimeStr(e.time, this.hourFormat) + ' (' + e.heightFt.toFixed(2) + ' ft)';
           this.tideEl.appendChild(rowEl(label, detail));
         });
         this._renderTideMarkers(events);
       } catch (err) {
-        this.tideEl.textContent = 'Tide predictions unavailable: ' + err.message;
+        this.tideEl.innerHTML = '';
+        this.tideEl.appendChild(messageRowEl('Tide predictions unavailable: ' + err.message));
         this._renderTideMarkers([]);
       }
     }
@@ -538,13 +562,13 @@
 
         positionAt(this._analog.sunriseIcon, SUN_MOON_ICON_R, sunriseFraction);
         positionAt(this._analog.sunriseLabel, SUN_MOON_LABEL_R, sunriseFraction);
-        this._analog.sunriseLabel.textContent = formatCompactHM(sunriseHM.hour, sunriseHM.minute);
+        this._analog.sunriseLabel.textContent = formatCompactHM(sunriseHM.hour, sunriseHM.minute, this.hourFormat);
         this._analog.sunriseIcon.style.display = '';
         this._analog.sunriseLabel.style.display = '';
 
         positionAt(this._analog.sunsetIcon, SUN_MOON_ICON_R, sunsetFraction);
         positionAt(this._analog.sunsetLabel, SUN_MOON_LABEL_R, sunsetFraction);
-        this._analog.sunsetLabel.textContent = formatCompactHM(sunsetHM.hour, sunsetHM.minute);
+        this._analog.sunsetLabel.textContent = formatCompactHM(sunsetHM.hour, sunsetHM.minute, this.hourFormat);
         this._analog.sunsetIcon.style.display = '';
         this._analog.sunsetLabel.style.display = '';
 
@@ -596,14 +620,17 @@
       this.analogViewEl.appendChild(this._analog.svg);
       this.container.appendChild(this.analogViewEl);
 
-      // Flat data list: sunrise/sunset rows, followed by tide rows, no sub-headers.
-      this.sunEl = document.createElement('div');
-      this.sunEl.className = 'tideclock-sun';
-      this.container.appendChild(this.sunEl);
+      // Flat data table: sunrise/sunset rows, followed by tide rows, no sub-headers.
+      this.dataTableEl = document.createElement('table');
+      this.dataTableEl.className = 'tideclock-table';
 
-      this.tideEl = document.createElement('div');
-      this.tideEl.className = 'tideclock-tides';
-      this.container.appendChild(this.tideEl);
+      this.sunEl = document.createElement('tbody');
+      this.dataTableEl.appendChild(this.sunEl);
+
+      this.tideEl = document.createElement('tbody');
+      this.dataTableEl.appendChild(this.tideEl);
+
+      this.container.appendChild(this.dataTableEl);
     }
 
     _setStatus(msg) {
@@ -612,16 +639,27 @@
   }
 
   function rowEl(label, value) {
-    const row = document.createElement('div');
+    const row = document.createElement('tr');
     row.className = 'tideclock-row';
-    const l = document.createElement('span');
+    const l = document.createElement('td');
     l.className = 'tideclock-row-label';
-    l.textContent = label + ': ';
-    const v = document.createElement('span');
+    l.textContent = label + ':';
+    const v = document.createElement('td');
     v.className = 'tideclock-row-value';
     v.textContent = value;
     row.appendChild(l);
     row.appendChild(v);
+    return row;
+  }
+
+  function messageRowEl(msg) {
+    const row = document.createElement('tr');
+    row.className = 'tideclock-row';
+    const cell = document.createElement('td');
+    cell.className = 'tideclock-row-message';
+    cell.colSpan = 2;
+    cell.textContent = msg;
+    row.appendChild(cell);
     return row;
   }
 
