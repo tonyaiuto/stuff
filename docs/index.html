@@ -28,7 +28,7 @@
     flex-wrap: wrap;
   }
   .tideclock {
-    flex: 1 1 320px;
+    flex: 1 1 360px;
     border: 1px solid #ccc;
     border-radius: 8px;
     padding: 1rem 1.25rem;
@@ -37,12 +37,22 @@
   .tideclock-title { margin: 0 0 0.5rem; }
   .tideclock-status { color: #a00; font-size: 0.75rem; min-height: 1.2em; margin-bottom: 0.5rem; }
   .tideclock-date-row { margin-bottom: 0.75rem; display: flex; align-items: center; gap: 0.75rem; }
-  .tideclock-row { display: flex; justify-content: space-between; padding: 0.15rem 0; }
-  .tideclock-row-label { color: #555; }
-  .tideclock-row-value { font-weight: 500; }
+  .tideclock-table { width: auto; border-collapse: collapse; }
+  .tideclock-row-label,
+  .tideclock-row-value,
+  .tideclock-row-message {
+    padding: 0.15rem 0;
+  }
+  .tideclock-row-label { color: #555; padding-right: 1rem; text-align: left; }
+  .tideclock-row-value {
+    font-weight: 500;
+    text-align: right;
+    font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
+  }
+  .tideclock-row-message { color: #555; }
 
   .tideclock-analog-view { margin-bottom: 0.5rem; }
-  .tideclock-analog-svg { display: block; width: 100%; max-width: 400px; height: auto; margin: 0 auto; }
+  .tideclock-analog-svg { display: block; width: 100%; max-width: 600px; height: auto; margin: 0 auto; }
   .tideclock-face { fill: #f3f3f3; }
   .tideclock-wedge { fill: #8a8a8a; }
   .tideclock-rim { fill: none; stroke: #333; stroke-width: 2; }
@@ -62,16 +72,17 @@
 </style>
 </head>
 <body>
-  <h1>Time &amp; Tide for Manhasset Bay</h1>
+  <h1>Time &amp; Tide Clock — Manhasset Bay</h1>
 
   <div class="panels">
     <div id="clock-a"></div>
+    <div id="clock-b"></div>
   </div>
 
   <script src="clock.js"></script>
   <script>
-    const clockA = new TideClock({ configUrl: 'https://tonyaiuto.github.io/stuff/nsyc_tideclock.json', container: 'clock-a' });
-    const clockB = new TideClock({ configUrl: 'https://tonyaiuto.github.io/stuff/nsyc_tideclock.json', container: 'clock-b' , hourFormat: 24});
+    const clockA = new TideClock({ configUrl: 'settings.example.json', container: 'clock-a', hourFormat: 12 });
+    const clockB = new TideClock({ configUrl: 'settings.example.json', container: 'clock-b', hourFormat: 24 });
     clockA.init();
     clockB.init().then(() => {
       // Give the second panel a different default date to show independent selection.
@@ -79,7 +90,6 @@
       d.setDate(d.getDate() + 1);
       clockB.setDate(d.toISOString().slice(0, 10));
     });
-
   </script>
 </body>
 </html>
