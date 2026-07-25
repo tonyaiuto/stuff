@@ -71,7 +71,15 @@
   <script src="clock.js"></script>
   <script>
     const clockA = new TideClock({ configUrl: 'https://tonyaiuto.github.io/stuff/nsyc_tideclock.json', container: 'clock-a' });
+    const clockB = new TideClock({ configUrl: 'https://tonyaiuto.github.io/stuff/nsyc_tideclock.json', container: 'clock-b' , hourFormat: 24});
     clockA.init();
+    clockB.init().then(() => {
+      // Give the second panel a different default date to show independent selection.
+      const d = new Date();
+      d.setDate(d.getDate() + 1);
+      clockB.setDate(d.toISOString().slice(0, 10));
+    });
+
   </script>
 </body>
 </html>
