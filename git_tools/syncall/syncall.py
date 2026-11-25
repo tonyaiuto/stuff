@@ -85,6 +85,71 @@ def contains(branch, base, cwd=None):
   return git_ok('merge-base', '--is-ancestor', base, branch, cwd=cwd)
 
 
+def die(msg):
+  print('\nSTOPPED: %s' % msg, file=sys.stderr)
+  sys.exit(1)
+
+
+def source_remote(main_branch):
+  """The remote that is the source of truth for the main line, or None."""
+  remotes = git('remote').split()
+  p = git('config', 'syncall.mainRemote', check=False)
+  configured = p.stdout.strip() if p.returncode == 0 else ''
+  if configured:
+    if configured not in remotes:
+      die('syncall.mainRemote is "%s", but there is no such remote' % configured)
+    return configured
+  if 'upstream' in remotes:
+    return 'upstream'
+  p = git('config', 'branch.%s.remote' % main_branch, check=False)
+  tracking = p.stdout.strip() if p.returncode == 0 else ''
+  if tracking in remotes:
+    return tracking
+  return remotes[0] if len(remotes) == 1 else None
+
+
+def refresh_main(main_branch, here):
+  """Fetch all remotes, then fast-forward local main to the source remote's.
+
+  Never pushes, never rebases or merges: if local main has commits of its own
+  we stop and explain.
+  """
+  print('== Fetching all')
+  # Let git's own output through so the user can see what happened.
+  if subprocess.run([GIT, 'fetch', '--all'], cwd=here).returncode != 0:
+    die('git fetch --all failed')
+
+  remote = source_remote(main_branch)
+  if remote is None:
+    print('== No remote to update %s from; leaving it as is' % main_branch)
+    return
+  ref = '%s/%s' % (remote, main_branch)
+  if not git_ok('rev-parse', '--verify', '--quiet', ref, cwd=here):
+    die('%s does not exist, so %s cannot be updated from %s.\n'
+        'Set the remote with: git config syncall.mainRemote <remote>'
+        % (ref, main_branch, remote))
+
+  if not contains(ref, main_branch, cwd=here):
+    own = git('log', '--oneline', '--max-count=10', '%s..%s' % (ref, main_branch),
+              cwd=here)
+    n = git('rev-list', '--count', '%s..%s' % (ref, main_branch), cwd=here)
+    die('local %s has %s commit(s) that are not in %s, so it will not be '
+        'updated.\nsyncall only fast-forwards the main line; it never '
+        'merges or rebases it.\nCommits only on local %s%s:\n%s\n'
+        'Move them to a branch, or reset %s, then run syncall again.'
+        % (main_branch, n, ref, main_branch,
+           ' (first 10)' if int(n) > 10 else '',
+           '\n'.join('  ' + l for l in own.splitlines()), main_branch))
+
+  if git('rev-parse', main_branch, cwd=here) == git('rev-parse', ref, cwd=here):
+    print('== %s is up to date with %s' % (main_branch, ref))
+    return
+  print('== Fast-forwarding %s to %s' % (main_branch, ref))
+  if subprocess.run([GIT, 'merge', '--ff-only', ref], cwd=here).returncode != 0:
+    die('could not fast-forward %s to %s (uncommitted changes in the way?)'
+        % (main_branch, ref))
+
+
 def resume_hint(branch):
   return 'resolve, commit, then run: syncall.py .   (or: syncall.py %s)' % branch
 
@@ -96,6 +161,8 @@ def main():
   ap.add_argument('--exclude', action='append', default=[], metavar='GLOB',
                   help='also exclude branches matching GLOB (repeatable)')
   args = ap.parse_args()
+  # Keep our output in order with the git subprocesses' output.
+  sys.stdout.reconfigure(line_buffering=True)
 
   here = os.getcwd()
   try:
@@ -108,15 +175,11 @@ def main():
   cur = git('branch', '--show-current', cwd=here)
   start = cur or git('rev-parse', 'HEAD', cwd=here)  # detached: restore by sha
 
-  # R1: refresh the main line, only when run from main.
-  if cur in ('main', 'master'):
-    print('== Fetching all')
-    git('fetch', '--all', cwd=here)
-    if len(git('remote').splitlines()) > 1:
-      print('== Merging against upstream %s' % cur)
-      git('pull', cwd=here)
-
   print('MAIN=%s' % main_branch)
+
+  # R1: refresh the main line, only when run from main.
+  if cur == main_branch:
+    refresh_main(main_branch, here)
 
   # R4: resume. Position is computed over all branches, before exclusions.
   after = args.resume

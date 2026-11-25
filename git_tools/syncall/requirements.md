@@ -13,9 +13,21 @@ checkouts, and in workspaces that mix local branches with git worktrees.
 ## Requirements
 
 ### R1. Refresh the main line from remotes
-- When run from the main branch (`main` or `master`), fetch all remotes.
-- If the repo has more than one remote (a fork with an upstream), also pull so
-  the local main picks up upstream's main.
+- When run from the main branch (MAIN, see R2), fetch all remotes, showing
+  git's output.
+- Then fast-forward local MAIN to the source remote's MAIN (`git merge
+  --ff-only`). Never pull, rebase or merge, and never push (laptop/desktop
+  workflows make pushing a footgun).
+- The source remote is, in order:
+  1. `git config syncall.mainRemote`
+  2. `upstream`, if it exists
+  3. the remote MAIN tracks, or the only remote
+  If none applies, skip the update.
+- If local MAIN has commits that are not in the source remote's MAIN, stop
+  (non-zero exit) and explain why: list those commits and say syncall only
+  fast-forwards the main line.
+- Other failures here (missing remote or ref, fetch failure) also stop with a
+  clear message.
 - When run from any other branch, do not touch the network.
 
 ### R2. Determine the integration branch ("MAIN")
@@ -119,6 +131,9 @@ thinking is not lost:
 
 - R1: the current-branch detection captures every branch name, so R1 only
   fires when `main`/`master` is the only branch.
+- R1: a bare `git pull` pulls from the branch's tracking remote (often a
+  stale fork `origin`), never from `upstream`, so MAIN did not pick up
+  upstream's changes.
 - R6: the exit trap always exits 0, so callers cannot tell that a merge
   failed.
 - R4: `SYNCALL <branch>` treats the name as a regex and is unquoted.
