@@ -46,14 +46,16 @@ checkouts, and in workspaces that mix local branches with git worktrees.
 
 ### R5. Configurable exclusions
 - Excluded branches are not merged into. Patterns are shell globs.
-- Built-in defaults (used when nothing is configured): `master`, `work`,
-  `bazel.main`, `z*`, `*backport*`.
-- Configurable through git config, multi-valued, so it works per repo and
-  globally:
+- The only built-in exclusion is MAIN itself (whatever R2 picked).
+- Configured exclusions add to that. They come from git config, multi-valued,
+  so they work per repo and globally:
   - `git config --add syncall.exclude 'z*'`
   - `git config --global --add syncall.exclude '*backport*'`
-- Open: whether configured values add to the defaults or replace them.
-- Open: command-line `--exclude` / `--include` for one-off runs.
+- Current global config: `z*` and `*backport*`.
+- `--exclude PATTERN` (repeatable) adds more for a one-off run.
+- Other MAIN-like branches (`master`, `work`, ...) are no longer excluded
+  unless configured, so they will be merged into.
+- Open: a `--include` to override a configured exclusion for one run.
 
 ### R6. Stop on conflict
 - If a merge conflicts, stop immediately, with a non-zero exit status.
@@ -82,7 +84,8 @@ checkouts, and in workspaces that mix local branches with git worktrees.
   out a branch.
 
 ### R9. Implementation
-- Written in Python (3, standard library only), replacing the bash script.
+- Written in Python (3, standard library only) as `syncall.py`, replacing the
+  bash `SYNCALL`. The user provides their own shell alias for it.
 - Use `/usr/bin/git` directly, bypassing personal git wrappers.
 - Do not depend on personal git aliases (`co`, `b`).
 - Tell the user which MAIN was chosen, which branches will be synced, and
@@ -120,12 +123,11 @@ thinking is not lost:
   failed.
 - R4: `SYNCALL <branch>` treats the name as a regex and is unquoted.
 - R2: the `git b | grep` probes print matching lines as noise.
-- R5: exclusions are hard-coded in the script.
+- R5: exclusions are hard-coded in the script (`master`, `work`,
+  `bazel.main`, `z*`, `backport`).
 - R7: always finishes on MAIN.
 - R8: branches checked out in other worktrees are silently excluded.
 
 ## Open questions
 
-- R5: do configured exclusions add to the built-in defaults, or replace them?
-- R9: should the Python version keep the filename `SYNCALL` (executable with a
-  `#!/usr/bin/env python3` shebang), or be `syncall.py` with a thin wrapper?
+- R5: is a `--include` override wanted?
