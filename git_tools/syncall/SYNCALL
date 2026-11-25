@@ -1,0 +1,64 @@
+#!/bin/bash -e
+
+FILTER=$(mktemp /tmp/syncall.XXXXXXX)
+# Do not use my personal wrapper
+GIT=/usr/bin/git
+
+trap '/bin/rm -f $FILTER; exit 0' 0 1 2 3 15
+
+N_REMOTES=$($GIT remote | wc -l)
+
+CUR_BRANCH=$($GIT branch | sed -e 's/^..//')
+if [[ ${CUR_BRANCH} == 'main' || ${CUR_BRANCH} == 'master' ]] ; then
+  echo "== Fetching all"
+  $GIT fetch --all
+  if [[ $N_REMOTES -gt 1 ]] ; then
+    echo "== Merging against upstream $CUR_BRANCH"
+    #  $GIT merge upstream ${CUR_BRANCH}
+    $GIT pull
+  fi
+fi
+
+if [ $# -gt 0 ] ; then
+  if [ $1 == '.' ] ; then
+    # 0 for linux (gnu sed), 1 for mac (BSD sed)
+    # echo '0,/^\\* /d' >$FILTER
+    echo '1,/^\* /d' >$FILTER
+  else
+    echo '1,/^[ *] '$1'$/d' >$FILTER
+  fi
+fi
+cat >>$FILTER <<INP
+/^\+ /d
+s/^. //
+/^master$/d
+/^work$/d
+/^bazel.main$/d
+/^z/d
+/backport/d
+INP
+MAIN=main
+if $GIT b | grep ' work$' ; then
+  MAIN=work
+fi
+if $GIT b | grep ' master$' ; then
+  MAIN=master
+fi
+if $GIT b | grep ' trunk$' ; then
+  MAIN=trunk
+fi
+echo MAIN=$MAIN
+
+#echo all branch: "$(/usr/bin/git branch)"
+# echo FILTER="$FILTER"
+BRANCHES=$(/usr/bin/git branch | /usr/bin/sed -f "$FILTER")
+echo Syncing: $BRANCHES
+for branch in $BRANCHES ; do
+  $GIT co $branch
+  echo ===== $branch =====
+  if ! $GIT merge $MAIN --no-edit ; then
+    exit 1
+  fi
+done
+$GIT co $MAIN
+/bin/rm $FILTER
